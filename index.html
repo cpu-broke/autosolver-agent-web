@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AutoSolver Agent | 配送分配超图求解器</title>
+  <meta name="description" content="面向配送分配赛题的 AutoSolver Agent Web 平台，支持 txt 导入、免费后端求解、实时进度、结果表格和下载。" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="scene-bg" aria-hidden="true">
+    <div class="sun-card"></div>
+    <div class="road road-a"></div>
+    <div class="road road-b"></div>
+    <div class="floating-order order-a"></div>
+    <div class="floating-order order-b"></div>
+  </div>
+
+  <main class="shell">
+    <header class="hero">
+      <nav class="nav">
+        <div class="brand">
+          <span class="brand-mark">M</span>
+          <div>
+            <strong>AutoSolver Agent</strong>
+            <small>Meituan delivery challenge</small>
+          </div>
+        </div>
+        <button id="settingsBtn" class="icon-btn" type="button" title="配置后端地址">API</button>
+      </nav>
+
+      <section class="hero-grid">
+        <div class="hero-copy">
+          <p class="pill">免费部署 · GitHub Pages + Hugging Face Spaces</p>
+          <h1 class="art-title" data-text="配送分配超图求解器">配送分配超图求解器</h1>
+          <p class="hero-text">
+            导入赛题 TXT，AutoSolver 后端自动完成订单与骑手分配。页面会提前唤醒免费求解引擎，评委打开链接即可上传、求解、查看表格并下载结果。
+          </p>
+          <div class="hero-actions">
+            <button id="pickFileBtn" class="primary-btn" type="button">选择赛题文件</button>
+            <button id="loadSampleBtn" class="soft-btn" type="button">载入示例数据</button>
+          </div>
+        </div>
+
+        <div class="mascot-panel" aria-label="动态配送示意">
+          <div class="map-card">
+            <span class="node node-shop"></span>
+            <span class="node node-user"></span>
+            <span class="node node-hub"></span>
+            <span class="route-dot"></span>
+            <div class="courier">
+              <span class="helmet"></span>
+              <span class="face"></span>
+              <span class="box"></span>
+            </div>
+          </div>
+          <div class="mini-stats">
+            <div><span>目标</span><strong>订单覆盖最大化</strong></div>
+            <div><span>策略</span><strong>合单与多骑手分配</strong></div>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <section class="workspace">
+      <section class="panel input-panel">
+        <div class="panel-head">
+          <div>
+            <span class="label">Input</span>
+            <h2>赛题数据</h2>
+          </div>
+          <span id="fileBadge" class="status-badge">等待导入</span>
+        </div>
+
+        <label id="dropzone" class="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".txt,.tsv,.csv,text/plain" />
+          <span class="upload-graphic"></span>
+          <strong>拖拽 txt 到这里，或点击上传</strong>
+          <small>支持 task_id_list / courier_id / total_score / willingness 格式</small>
+        </label>
+
+        <div id="fileMeta" class="file-meta">
+          <span>文件：--</span>
+          <span>大小：--</span>
+          <span>行数：--</span>
+        </div>
+
+        <textarea id="inputText" spellcheck="false" placeholder="也可以直接粘贴赛题 txt 数据..."></textarea>
+
+        <div class="toolbar">
+          <button id="runBtn" class="primary-btn" type="button">启动求解</button>
+          <button id="cancelBtn" class="danger-btn" type="button" disabled>取消</button>
+          <button id="clearBtn" class="soft-btn" type="button">清空</button>
+          <button id="copyInputBtn" class="soft-btn" type="button">复制输入</button>
+        </div>
+      </section>
+
+      <aside class="panel status-panel">
+        <div class="panel-head">
+          <div>
+            <span class="label">Runtime</span>
+            <h2>求解状态</h2>
+          </div>
+          <span id="engineStatus" class="status-badge warning">Python 引擎预热中</span>
+        </div>
+
+        <div class="progress-card">
+          <div class="progress-ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+              <circle id="ringBar" class="ring-bar" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="ring-center">
+              <strong id="progressNumber">0%</strong>
+              <span id="progressLabel">唤醒引擎</span>
+            </div>
+          </div>
+          <div class="scooter-loader" aria-hidden="true">
+            <span></span>
+          </div>
+        </div>
+
+        <ol class="stage-list">
+          <li data-stage="0" class="active"><span></span>唤醒免费后端服务</li>
+          <li data-stage="1"><span></span>读取并校验赛题数据</li>
+          <li data-stage="2"><span></span>执行 AutoSolver 算法</li>
+          <li data-stage="3"><span></span>整理表格与下载结果</li>
+        </ol>
+
+        <div class="stat-grid">
+          <div><span>运行时间</span><strong id="runtimeStat">--</strong></div>
+          <div><span>输出行数</span><strong id="rowStat">--</strong></div>
+          <div><span>覆盖订单</span><strong id="taskStat">--</strong></div>
+          <div><span>使用骑手</span><strong id="courierStat">--</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel result-panel">
+      <div class="panel-head result-head">
+        <div>
+          <span class="label">Output</span>
+          <h2>求解结果</h2>
+        </div>
+        <div class="result-actions">
+          <input id="searchInput" type="search" placeholder="搜索订单或骑手" />
+          <button id="copyResultBtn" class="soft-btn" type="button">复制 TXT</button>
+          <button id="downloadTxtBtn" class="primary-btn" type="button">下载 TXT</button>
+          <button id="downloadJsonBtn" class="soft-btn" type="button">下载 JSON</button>
+        </div>
+      </div>
+
+      <div class="result-layout">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>订单 task_id_list</th>
+                <th>分配骑手 courier_id</th>
+                <th>骑手数</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody">
+              <tr><td colspan="4" class="empty">上传数据后启动求解，结果会显示在这里。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <aside class="preview">
+          <h3>原始输出</h3>
+          <pre id="outputText">等待求解...</pre>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog" class="settings-dialog">
+    <form method="dialog">
+      <h2>后端 API 地址</h2>
+      <p>部署 Hugging Face Space 后，把地址填在这里。保存后会自动预热。</p>
+      <label>
+        <span>API Base URL</span>
+        <input id="apiBaseInput" type="url" placeholder="https://your-autosolver.hf.space" />
+      </label>
+      <div class="dialog-actions">
+        <button id="resetApiBtn" class="soft-btn" type="button">恢复默认</button>
+        <button class="soft-btn" value="cancel" type="submit">取消</button>
+        <button id="saveApiBtn" class="primary-btn" value="default" type="button">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
