@@ -5,6 +5,7 @@ const MAX_RENDER_ROWS = 200;
 const RESULT_CACHE_LIMIT = 8;
 const HISTORY_LIMIT = 8;
 const SAMPLE_PATH = 'sample/large_seed301.txt';
+const ROOT_SAMPLE_PATH = 'large_seed301.txt';
 const RAW_SAMPLE_URL = 'https://raw.githubusercontent.com/cpu-broke/autosolver-agent-web/main/sample/large_seed301.txt';
 
 const $ = (id) => document.getElementById(id);
